@@ -1,1 +1,2 @@
 from .new_contribution import ConfigMaker
+from squadds.database.contribute import contribute_experimental_data

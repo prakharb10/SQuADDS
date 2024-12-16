@@ -154,6 +154,43 @@ We welcome contributions from the community! Here is our [work wish list](wish_l
 
 Please see our [Contributing Guidelines](CONTRIBUTING.md) for more information on how to get started and absolutely feel free to reach out to us if you have any questions.
 
+## Contributing Experimental Data
+
+Users can now contribute their experimental data to SQuADDS_DB using the provided API. Here's how to do it:
+
+```python
+from squadds.database import contribute_experimental_data
+
+# Define your experimental data as a dictionary
+data = {
+    "design": {
+        "design_options": {...},
+        "design_tool": "YourDesignTool"
+    },
+    "sim_options": {
+        "setup": {...},
+        "simulator": "YourSimulator"
+    },
+    "sim_results": {
+        "result1": value1,
+        "unit1": "unit",
+        # ... other results ...
+    },
+    "contributor": {
+        "group": "YourGroupName",
+        "PI": "YourPIName",
+        "institution": "YourInstitution",
+        "uploader": "YourName",
+        "date_created": "YYYY-MM-DD-HHMMSS"
+    }
+}
+
+# Contribute the data
+contribute_experimental_data(data, repo_id="SQuADDS/SQuADDS_DB", dataset_name="YourDatasetName")
+```
+
+Make sure to replace the placeholders with your actual data.
+
 ---
 
 ## License
