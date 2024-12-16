@@ -10,6 +10,7 @@ import warnings
 import pandas as pd
 import requests
 from datasets import get_dataset_config_names, load_dataset
+from functools import lru_cache
 from huggingface_hub import login
 from tabulate import tabulate
 from tqdm import tqdm
@@ -912,6 +913,7 @@ class SQuADDS_DB(metaclass=SingletonMeta):
             self.view_component_names("coupler")
             return
 
+    @lru_cache(maxsize=32)
     def see_dataset(self, data_type=None, component=None, component_name=None):
         """
         View a dataset based on the provided data type, component, and component name.
@@ -972,7 +974,7 @@ class SQuADDS_DB(metaclass=SingletonMeta):
             print(f"An error occurred while loading the dataset: {e}")
             return
 
-
+    @lru_cache(maxsize=32)
     def get_dataset(self, data_type=None, component=None, component_name=None):
         """
         Retrieves a dataset based on the specified data type, component, and component name.
