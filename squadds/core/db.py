@@ -864,17 +864,20 @@ class SQuADDS_DB(metaclass=SingletonMeta):
             self.view_component_names("cavity")
             return
         
-    def select_resonator_type(self, resonator_type):
+    def select_resonator_type(self, resonator_type=None):
         """
         Select the coupler based on the resonator type.
 
         Args:
-            resonator_type (str): The type of resonator, e.g., "quarter" or "half".
+            resonator_type (str, optional): The type of resonator, e.g., "quarter" or "half". If None, defaults to "quarter".
         """
         resonator_to_coupler = {
             "quarter": "CLT",
             "half": "NCap"
         }
+
+        if resonator_type is None:
+            resonator_type = "quarter"
 
         if resonator_type not in resonator_to_coupler:
             raise ValueError(f"Invalid resonator type: {resonator_type}. Must be one of {list(resonator_to_coupler.keys())}.")
