@@ -28,3 +28,5 @@ PyGithub==2.4.0
 GitPython==3.1.43
 klayout==0.29.0
 gdspy>=1.6.12
+pydantic>=2.10.4
+langchain>=0.3.13
