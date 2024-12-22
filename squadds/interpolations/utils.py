@@ -254,9 +254,17 @@ def generate_qubit_cavity_training_data(analyzer, target_params_df, path_to_file
 
 
 class TestStructuredOutput(BaseModel):
+    """
+    A Pydantic model used to test if the model can produce structured output.
+
+    Attributes:
+        answer (str): Answer to the question.
+    """
+
     answer: str = Field(..., description="Answer to the question.")
 
 
+# Prompt messages to test if the model can produce structured output
 test_messages = [
     SystemMessage(
         content="You are a model to help the development of superconducting qubits."
@@ -266,6 +274,15 @@ test_messages = [
 
 
 def test_chat_structured_output(chat_model: BaseChatModel) -> None:
+    """
+    Function to test if a Langchain compatible chat model can produce structured output.
+
+    Args:
+        chat_model (BaseChatModel): The chat model to test.
+
+    Raises:
+        AssertionError: If the model fails to produce the test structured output.
+    """
     structured_chat_model = chat_model.with_structured_output(TestStructuredOutput)
     try:
         resp = structured_chat_model.invoke(test_messages)
@@ -281,6 +298,19 @@ def test_chat_structured_output(chat_model: BaseChatModel) -> None:
 def test_chat_tool_calls(
     chat_model: BaseChatModel, read_tool_calls: Callable[[LanguageModelOutput], dict]
 ) -> None:
+    """
+    Function to test if a Langchain compatible chat model can make valid tool calls.
+
+    Some models do not support structured output but can make tool calls.
+    This function tests if the model can make tool calls and the output is valid.
+
+    Args:
+        chat_model (BaseChatModel): The chat model to test.
+        read_tool_calls (Callable[[LanguageModelOutput], dict]): A function that defines how to read the tool calls from the model output.
+
+    Raises:
+        AssertionError: If the model fails to make tool calls or the output is invalid.
+    """
     chat_model_binded = chat_model.bind_tools([TestStructuredOutput])
     try:
         resp = chat_model_binded.invoke(test_messages)

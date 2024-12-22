@@ -18,6 +18,16 @@ from squadds.interpolations.interpolator import Interpolator
 
 
 class InterpolatingQubitClaw(BaseModel):
+    """
+    Pydantic model to represent the interpolation parameters for the qubit and claw.
+
+    This class is used to obtain a structured output from the chat model for the qubit and claw design.
+
+    Attributes:
+        qubit_cross_length (float): Interpolated cross length of the qubit in micrometers.
+        qubit_claw_length (float): Interpolated claw length of the qubit in micrometers.
+    """
+
     qubit_cross_length: float = Field(
         ..., description="Interpolated cross length of the qubit in micrometers."
     )
@@ -27,6 +37,16 @@ class InterpolatingQubitClaw(BaseModel):
 
 
 class InterpolatingCavityCoupler(BaseModel):
+    """
+    Pydantic model to represent the interpolation parameters for the cavity and coupler.
+
+    This class is used to obtain a structured output from the chat model for the cavity and coupler design.
+
+    Attributes:
+        resonator_length (float): Interpolated length of the cavity resonator in micrometers.
+        coupling_length (float): Interpolated length of the coupling element in micrometers.
+    """
+
     resonator_length: float = Field(
         ..., description="Interpolated length of the cavity resonator in micrometers."
     )
@@ -36,6 +56,25 @@ class InterpolatingCavityCoupler(BaseModel):
 
 
 class LLMInterpolator(Interpolator):
+    """
+
+    Class for LLM-based interpolation.
+
+    This class provides an interface to utilize LLMs/Chat Models to interpolate
+    the design options for qubit and cavity based on target parameters. Similar to the scaling
+    interpolator, it first finds the closest qubit-claw and cavity-coupler designs from the database
+    and then uses the LLM to interpolate the design options based on the target parameters.
+
+    We use structured output or tool calls to ensure that the chat model returns the
+    required parameters for the qubit and cavity designs. Therefore, a compatible Langchain chat model
+    should be used.
+
+    Attributes:
+        qubit_claw_prompts (List[BaseMessage]): Default prompts for the qubit and claw design.
+        cavity_coupler_prompts (List[BaseMessage]): Default prompts for the cavity and coupler design.
+
+    """
+
     qubit_claw_prompts: List[BaseMessage] = [
         SystemMessage(
             content="We are working with super-conducting qubits and using the SQuADDS database to retrieve simulation data. The given input dictionary contains the closest available simulation results for the target qubit and claw. The goal is to provide the best guess for the dimensions of the qubit and claw based on target parameters."
@@ -71,10 +110,52 @@ class LLMInterpolator(Interpolator):
         format_prompts: bool = False,
     ) -> pd.DataFrame:
         """
-        Retrieves the design options for qubit and cavity based on target parameters.
+        Builds the design options for qubit and cavity based on target parameters.
+
+        This method is customizable to support different scenarios.
+        Based on the input chat model and other parameters, the user can:
+            - Use a structured output compatible chat model to calculate the design options.
+            - Use tool calls to read the structured output from the chat model.
+            - Use a self-defined chat model to calculate the design options.
+            - Use custom prompts for the qubit-claw and cavity-coupler designs.
+            - Use placeholders in user-defined prompts to format the prompts based on the input parameters.
+
+        To check if your chat model supports structured output or tool calls, you can use the `test_chat_structured_output`
+        and `test_chat_tool_calls` functions from utils.
+
+        Args:
+            chat_model (Union[BaseChatModel, Callable[[List[BaseMessage], str], InterpolatingQubitClaw | InterpolatingCavityCoupler]):
+                The chat model can be:
+                    - A structured output compatible Langchain chat model.
+                    - A tool call compatible Langchain chat model with the `read_tool_calls` function.
+                    - A callable function that takes a list of prompts and the output type (InterpolatingQubitClaw or InterpolatingCavityCoupler) as input
+                    and returns the structured output.
+
+            read_tool_calls (Callable[[LanguageModelOutput, str], dict], optional): A function to read the tool calls from the chat model output. If provided, the chat model will be invoked with the tool calls. Defaults to None.
+                The function should take the chat model output and the tool name ("InterpolatingQubitClaw" or "InterpolatingCavityCoupler") as input and return the tool call data as a dictionary.
+                The dictionary data is then used to create the InterpolatingQubitClaw or InterpolatingCavityCoupler instance.
+
+            qubit_claw_prompt (List[BaseMessage], optional): Prompts for the qubit-claw design. Defaults to None.
+                If not provided, the default prompts will be used. Required if `format_prompts` is True.
+                If `format_prompts` is True, the second message should contain placeholders for the input parameters and target parameters.
+                The placeholders should be formatted as `{input_params}`, `{f_q_target}`, `{alpha_target}`, and `{g_target}`.
+
+            cavity_coupler_prompt (List[BaseMessage], optional): Prompts for the cavity-coupler design. Defaults to None.
+                If not provided, the default prompts will be used. Required if `format_prompts` is True.
+                If `format_prompts` is True, the second message should contain placeholders for the input parameters and target parameters.
+                The placeholders should be formatted as `{input_params}`, `{f_res_target}`, and `{kappa_target}`.
+
+            format_prompts (bool, optional): A flag to indicate whether to format the prompts. Defaults to False.
+                If True, the prompts will be formatted based on the input parameters and target parameters.
+                The placeholders in the prompts should be formatted as `{input_params}`, `{f_q_target}`, `{alpha_target}`, `{g_target}`, `{f_res_target}`, and `{kappa_target}`.
 
         Returns:
             pd.DataFrame: A DataFrame containing the design options for qubit and cavity.
+
+        Raises:
+            ValueError: If format_prompts is True and no prompts are provided for qubit-claw and cavity-coupler designs.
+            ValueError: If the chat model does not return an instance of InterpolatingQubitClaw or InterpolatingCavityCoupler.
+            ValueError: If an error occurs while reading the tool call data.
         """
         # Extract target parameters
         f_q_target = self.target_params["qubit_frequency_GHz"]
@@ -118,9 +199,11 @@ class LLMInterpolator(Interpolator):
                 num_top=1,
             )
 
+        # Pass only the relevant columns to the chat model
         input_params = closest_qubit_claw_design[
             ["design_options_qubit", "design_options_cavity_claw", "design_options"]
         ].to_dict(orient="records")[0]
+
         # Initialize qubit-claw prompts
         if qubit_claw_prompt:
             if format_prompts:
@@ -253,6 +336,7 @@ class LLMInterpolator(Interpolator):
                 target_params_cavity, num_top=1
             )
 
+        # Pass only the relevant columns to the chat model
         input_params = closest_cavity_cpw_design[
             ["design_options_qubit", "design_options_cavity_claw", "design_options"]
         ].to_dict(orient="records")[0]
